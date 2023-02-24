@@ -58,17 +58,20 @@ class GanModel(BaseModel):
             which_epoch = opt.which_epoch
             self.load_net(self.netG_A, 'G_A', which_epoch)
             if self.isTrain:
-                self.load_net(self.netD_A, 'D_A', which_epoch)
                 if self.opt.patchD:
                     self.load_net(self.netD_P, 'D_P', which_epoch)
+                self.load_net(self.netD_A, 'D_A', which_epoch)
 
         if self.isTrain:
             self.old_lr = opt.lr
             self.fakeB_pool = ImagePool(opt.pool_size)
 
             # loss
-            self.criterionGAN = networks.GANLoss()
-            self.criterionCycle = torch.nn.MSELoss()
+            self.criterionGAN = networks.GANLoss(
+                use_lsgan=not opt.no_lsgan, tensor=self.Tensor)
+            # self.criterionGAN = networks.GANLoss()
+            # self.criterionCycle = torch.nn.MSELoss()
+            self.criterionCycle = torch.nn.L1Loss()
             self.criterionL1 = torch.nn.L1Loss()
             self.criterionIdt = torch.nn.L1Loss()
 
@@ -144,28 +147,38 @@ class GanModel(BaseModel):
     def get_image_paths(self):
         return self.image_paths
 
-    def backward_D_basic(self, netD, real, fake):
+    def backward_D_basic(self, netD, real, fake, use_ragan):
+        # Real
         pred_real = netD.forward(real)
-        pred_fake = netD.forward(fake.detach())  # ok的
-
-        lossD_real = self.criterionGAN(pred_real, True)  # .
-        lossD_fake = self.criterionGAN(pred_fake, False)
-        lossD = (lossD_fake + lossD_real) / 2
-
-        return lossD
+        pred_fake = netD.forward(fake.detach())
+        if self.opt.use_wgan:
+            loss_D_real = pred_real.mean()
+            loss_D_fake = pred_fake.mean()
+            loss_D = loss_D_fake - loss_D_real + self.criterionGAN.calc_gradient_penalty(netD,
+                                                                                         real.data, fake.data)
+        elif self.opt.use_ragan and use_ragan:
+            loss_D = (self.criterionGAN(pred_real - torch.mean(pred_fake), True) +
+                      self.criterionGAN(pred_fake - torch.mean(pred_real), False)) / 2
+        else:
+            loss_D_real = self.criterionGAN(pred_real, True)
+            loss_D_fake = self.criterionGAN(pred_fake, False)
+            loss_D = (loss_D_real + loss_D_fake) * 0.5
+        # loss_D.backward()
+        return loss_D
 
     def backward_D_A(self):
         fakeB = self.fakeB_pool.query(self.fakeB)
-        fakeB = self.fakeB
-        self.lossD_A = self.backward_D_basic(self.netD_A, self.realB, fakeB)
+        # fakeB = self.fakeB
+        self.lossD_A = self.backward_D_basic(
+            self.netD_A, self.realB, fakeB, True)
         self.lossD_A.backward()
 
     def backward_D_P(self):
         lossD_P = self.backward_D_basic(
-            self.netD_P, self.real_patch, self.fake_patch)
+            self.netD_P, self.real_patch, self.fake_patch, False)
         for i in range(self.opt.patchD_3):   #
             lossD_P += self.backward_D_basic(self.netD_P,
-                                             self.real_patch1[i], self.fake_patch1[i])
+                                             self.real_patch1[i], self.fake_patch1[i], False)
         self.lossD_P = lossD_P / float(self.opt.patchD_3 + 1)
         self.lossD_P.backward()
 
@@ -178,15 +191,17 @@ class GanModel(BaseModel):
         if self.opt.patchD:
             pred_fake_patch = self.netD_P.forward(self.fake_patch)
             pred_real_patch = self.netD_P.forward(self.real_patch)
-            loss += (self.criterionGAN(pred_fake_patch - torch.mean(pred_fake_patch), False) +
-                     self.criterionGAN(pred_real_patch - torch.mean(pred_real_patch), True)) / 2
+            loss += self.criterionGAN(pred_fake_patch, True)
+            # loss += (self.criterionGAN(pred_fake_patch - torch.mean(pred_fake_patch), False) +
+            #          self.criterionGAN(pred_real_patch - torch.mean(pred_real_patch), True)) / 2
 
         if self.opt.patchD_3 > 0:
             for i, data in enumerate(self.fake_patch1):
                 pred_fake_patch1 = self.netD_P.forward(data)
                 pred_real_patch1 = self.netD_P.forward(data)
-                loss += (self.criterionGAN(pred_fake_patch1 - torch.mean(pred_fake_patch1), True) +
-                         self.criterionGAN(pred_real_patch1 - torch.mean(pred_real_patch1), False)) / 2
+                loss += self.criterionGAN(pred_fake_patch1, True)
+                # loss += (self.criterionGAN(pred_fake_patch1 - torch.mean(pred_fake_patch1), True) +
+                #          self.criterionGAN(pred_real_patch1 - torch.mean(pred_real_patch1), False)) / 2
 
             self.lossG_A += loss/float(self.opt.patchD_3 + 1)
         # vgg loss
@@ -269,7 +284,7 @@ class GanModel(BaseModel):
 
     def save(self, label):
         self.save_net(self.netG_A, 'G_A', label, self.gpu_id)
-        self.save_net(self.netD_P, 'D_P', label, self.gpu_id)
+        self.save_net(self.netD_A, 'D_A', label, self.gpu_id)
         self.save_net(self.netD_P, 'D_P', label, self.gpu_id)
 
     def update_lr(self):

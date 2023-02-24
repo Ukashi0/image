@@ -15,6 +15,7 @@ if __name__ == '__main__':
     opt.batchSize = 1
     opt.serial_batches = True  # no shuffle
     opt.no_flip = True  # no flip
+    opt.resize_or_crop = 'no'
 
     data_loader = CreateDataLoader(opt)
     dataset = data_loader.load_data()

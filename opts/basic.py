@@ -13,13 +13,13 @@ class BaseOptions():
     def initialize(self):
         self.parser.add_argument('--dataroot', default='./dataset/')
         self.parser.add_argument(
-            '--batchsize', type=int, default=32, help='input batch size')
+            '--batchsize', type=int, default=16, help='input batch size')
         self.parser.add_argument(
             '--loadsize', type=int, default=286, help='scale images to this size')
         self.parser.add_argument(
-            '--finesize', type=int, default=128, help='then crop to this size')
+            '--finesize', type=int, default=320, help='then crop to this size')
         self.parser.add_argument(
-            '--patchsize', type=int, default=64, help='then crop to this size')
+            '--patchsize', type=int, default=32, help='then crop to this size')
         self.parser.add_argument(
             '--input_nc', type=int, default=3, help='# of input image channels')
         self.parser.add_argument(
@@ -33,8 +33,8 @@ class BaseOptions():
         self.parser.add_argument('--which_model_netG', type=str, default='unet_256',
                                  help='selects model to use for netG')
         self.parser.add_argument(
-            '--n_layers_D', type=int, default=3, help='only used if which_model_netD==n_layers')
-        self.parser.add_argument('--n_layers_patchD', type=int, default=3,
+            '--n_layers_D', type=int, default=5, help='only used if which_model_netD==n_layers')
+        self.parser.add_argument('--n_layers_patchD', type=int, default=4,
                                  help='only used if which_model_netD==n_layers')
         self.parser.add_argument('--gpu_id', type=str, default='0',
                                  help='gpu ids: e.g. 0  0,1,2, 0,2. use -1 for CPU')
@@ -65,7 +65,7 @@ class BaseOptions():
         self.parser.add_argument('--identity', type=float, default=0.0,
                                  help='use identity mapping. Setting identity other than 1 has an effect of scaling the weight of the identity mapping loss. For example, if the weight of the identity loss should be 10 times smaller than the weight of the reconstruction loss, please set optidentity = 0.1')
         self.parser.add_argument(
-            '--no_dropout', action='store_true', help='no dropout for the generator')
+            '--no_dropout', default=True, help='no dropout for the generator')
         self.parser.add_argument(
             '--lambda_A', type=float, default=10.0, help='weight for cycle loss (A -> B -> A)')
         self.parser.add_argument(
@@ -77,7 +77,7 @@ class BaseOptions():
         self.parser.add_argument('--no_flip', action='store_true',
                                  help='if specified, do not flip the images for data augmentation')
         self.parser.add_argument(
-            '--skip', type=float, default=0.8, help='B = net.forward(A) + skip*A')
+            '--skip', type=float, default=1.0, help='B = net.forward(A) + skip*A')
         self.parser.add_argument(
             '--use_mse', action='store_true', help='MSELoss')
         self.parser.add_argument(
@@ -93,7 +93,7 @@ class BaseOptions():
         self.parser.add_argument(
             '--vgg_mean', action='store_true', help='substract mean in vgg loss')
         self.parser.add_argument(
-            '--vgg_choose', type=str, default='relu5_3', help='choose layer for vgg')
+            '--vgg_choose', type=str, default='relu5_1', help='choose layer for vgg')
         self.parser.add_argument(
             '--no_vgg_instance', action='store_true', help='vgg instance normalization')
         self.parser.add_argument(
@@ -130,9 +130,9 @@ class BaseOptions():
         self.parser.add_argument(
             '--D_P_times2', action='store_true', help='loss_D_P *= 2')
         self.parser.add_argument(
-            '--patch_vgg', action='store_true', help='use vgg loss between each patch')
+            '--patch_vgg', default=True, help='use vgg loss between each patch')
         self.parser.add_argument(
-            '--hybrid_loss', action='store_true', help='use lsgan and ragan separately')
+            '--hybrid_loss', default=True, help='use lsgan and ragan separately')
         self.parser.add_argument('--self_attention', default=1,
                                  help='adding attention on the input of generator')
         self.parser.add_argument(
