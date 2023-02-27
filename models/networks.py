@@ -329,7 +329,7 @@ class ChannelAttentionModule(nn.Module):
     def forward(self, x):
         avgout = self.shared_MLP(self.avg_pool(x))
         maxout = self.shared_MLP(self.max_pool(x))
-        return self.sigmoid(avgout + maxout)
+        return self.sigmoid(avgout + maxout)*x
 
 
 class SpatialAttentionModule(nn.Module):
@@ -354,7 +354,7 @@ class CBAM(nn.Module):
         self.spatial_attention = SpatialAttentionModule()
 
     def forward(self, x):
-        out = self.channel_attention(x) * x
+        out = self.channel_attention(x)
         out = self.spatial_attention(out) * out
         return out
 
@@ -365,11 +365,13 @@ class conv_block(nn.Module):
         super(conv_block, self).__init__()
         self.conv = nn.Sequential(
             nn.Conv2d(ch_in, ch_out, 3, padding=1),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.BatchNorm2d(ch_out),
+            nn.ReLU(0.2, inplace=True),
+            # nn.LeakyReLU(0.2, inplace=True),
+            # nn.BatchNorm2d(ch_out),
             nn.Conv2d(ch_out, ch_out, 3, padding=1),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.BatchNorm2d(ch_out),
+            nn.ReLU(0.2, inplace=True),
+            # nn.LeakyReLU(0.2, inplace=True),
+            # nn.BatchNorm2d(ch_out),
         )
 
     def forward(self, x):
@@ -382,11 +384,13 @@ class up_conv(nn.Module):
         super(up_conv, self).__init__()
         self.up = nn.Sequential(
             nn.Conv2d(ch_in, ch_out, 3, padding=1),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.BatchNorm2d(ch_out),
+            nn.ReLU(0.2, inplace=True),
+            # nn.LeakyReLU(0.2, inplace=True),
+            # nn.BatchNorm2d(ch_out),
             nn.Conv2d(ch_out, ch_out, 3, padding=1),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.BatchNorm2d(ch_out)
+            nn.ReLU(0.2, inplace=True),
+            # nn.LeakyReLU(0.2, inplace=True),
+            # nn.BatchNorm2d(ch_out)
         )
 
     def forward(self, x):
@@ -404,16 +408,32 @@ class Unet_resize_conv(nn.Module):
         self.Maxpool = nn.MaxPool2d(2)
         # self.conv1_1 = nn.Conv2d(4, 32, 3, padding=p)
         if opt.self_attention:
-            self.cbam1 = CBAM(channel=32)
-            self.cbam2 = CBAM(channel=64)
-            self.cbam3 = CBAM(channel=128)
-            self.cbam4 = CBAM(channel=256)
-            self.cbam5 = CBAM(channel=512)
+            self.ca1 = ChannelAttentionModule(channel=32)
+            self.ca2 = ChannelAttentionModule(channel=64)
+            self.ca3 = ChannelAttentionModule(channel=128)
+            self.ca4 = ChannelAttentionModule(channel=256)
+            self.ca5 = ChannelAttentionModule(channel=512)
+            self.spa1 = SpatialAttentionModule()
+            self.downSample2 = SpatialAttentionModule()
+            self.downSample3 = SpatialAttentionModule()
+            self.downSample4 = SpatialAttentionModule()
 
-        self.conv1 = conv_block(ch_in=3, ch_out=32)
-        self.conv2 = conv_block(ch_in=32, ch_out=64)
-        self.conv3 = conv_block(ch_in=64, ch_out=128)
-        self.conv4 = conv_block(ch_in=128, ch_out=256)
+        self.conv1 = nn.Sequential(
+            conv_block(ch_in=3, ch_out=32),
+            ChannelAttentionModule(channel=32)
+        )
+        self.conv2 = nn.Sequential(
+            conv_block(ch_in=32, ch_out=64),
+            ChannelAttentionModule(channel=64)
+        )
+        self.conv3 = nn.Sequential(
+            conv_block(ch_in=64, ch_out=128),
+            ChannelAttentionModule(channel=128)
+        )
+        self.conv4 = nn.Sequential(
+            conv_block(ch_in=128, ch_out=256),
+            ChannelAttentionModule(channel=256)
+        )
         self.conv5 = up_conv(ch_in=256, ch_out=512)
         self.deconv5 = nn.Conv2d(512, 256, 3, padding=1)  #
         self.conv6 = up_conv(ch_in=512, ch_out=256)
@@ -453,42 +473,45 @@ class Unet_resize_conv(nn.Module):
             flag = 1
         # pass
         input, pad_left, pad_right, pad_top, pad_bottom = pad_tensor(input)
+        if self.opt.self_attention:
+            sa = self.spa1(input)
 
         x1 = self.conv1(input)
-        conv1 = self.cbam1(x1)+x1
+        # conv1 = self.ca1(x1)
 
-        x2 = self.Maxpool(conv1)
+        x2 = self.Maxpool(x1)
         x2 = self.conv2(x2)
-        conv2 = self.cbam2(x2)+x2
+        # conv2 = self.ca2(x2)
 
-        x3 = self.Maxpool(conv2)
+        x3 = self.Maxpool(x2)
         x3 = self.conv3(x3)
-        conv3 = self.cbam3(x3)+x3
+        # conv3 = self.ca3(x3)+x3
 
-        x4 = self.Maxpool(conv3)
+        x4 = self.Maxpool(x3)
         x4 = self.conv4(x4)
-        conv4 = self.cbam4(x4)+x4
+        # conv4 = self.ca4(x4)+x4
 
-        x5 = self.Maxpool(conv4)
+        x5 = self.Maxpool(x4)
         x5 = self.conv5(x5)
 
         d5 = F.upsample(x5, scale_factor=2, mode='bilinear')
-        d6 = torch.cat([self.deconv5(d5), conv4], 1)
+        d6 = torch.cat([self.deconv5(d5), x4], 1)
         d6 = self.conv6(d6)
 
         d6 = F.upsample(d6, scale_factor=2, mode='bilinear')
-        d7 = torch.cat([self.deconv6(d6), conv3], 1)
+        d7 = torch.cat([self.deconv6(d6), x3], 1)
         d7 = self.conv7(d7)
 
         d7 = F.upsample(d7, scale_factor=2, mode='bilinear')
-        d8 = torch.cat([self.deconv7(d7), conv2], 1)
+        d8 = torch.cat([self.deconv7(d7), x2], 1)
         d8 = self.conv8(d8)
 
         d8 = F.upsample(d8, scale_factor=2, mode='bilinear')
-        d9 = torch.cat([self.deconv8(d8), conv1], 1)
+        d9 = torch.cat([self.deconv8(d8), x1], 1)
         d9 = self.conv9(d9)
 
         latent = self.conv10(d9)
+        latent = latent * sa
 
         if self.opt.tanh:
             latent = self.tanh(latent)

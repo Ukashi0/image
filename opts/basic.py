@@ -13,13 +13,13 @@ class BaseOptions():
     def initialize(self):
         self.parser.add_argument('--dataroot', default='./dataset/')
         self.parser.add_argument(
-            '--batchsize', type=int, default=16, help='input batch size')
+            '--batchsize', type=int, default=32, help='input batch size')
         self.parser.add_argument(
             '--loadsize', type=int, default=286, help='scale images to this size')
         self.parser.add_argument(
-            '--finesize', type=int, default=320, help='then crop to this size')
+            '--finesize', type=int, default=128, help='then crop to this size')
         self.parser.add_argument(
-            '--patchsize', type=int, default=32, help='then crop to this size')
+            '--patchsize', type=int, default=128, help='then crop to this size')
         self.parser.add_argument(
             '--input_nc', type=int, default=3, help='# of input image channels')
         self.parser.add_argument(

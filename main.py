@@ -16,6 +16,7 @@ def get_config(config):
 
 if __name__ == '__main__':
     opt = TrainOptions().parse()
+    # opt.continue_train = True
     config = get_config(opt.config)
     data_loader = CreateDataLoader(opt)
     dataset = data_loader.load_data()

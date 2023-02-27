@@ -64,6 +64,7 @@ class GanModel(BaseModel):
 
         if self.isTrain:
             self.old_lr = opt.lr
+            # self.old_lr = 0.000051
             self.fakeB_pool = ImagePool(opt.pool_size)
 
             # loss
@@ -217,7 +218,7 @@ class GanModel(BaseModel):
                 vgg_loss += self.vgg_loss.compute(
                     self.vgg, self.fake_patch1[i], self.input_patch1[i]) * self.opt.vgg
 
-        self.loss_vgg_b += loss / float(self.opt.patchsize+1)
+        self.loss_vgg_b += loss / float(self.opt.patchD_3+1)
 
         self.lossG = self.lossG_A + self.loss_vgg_b*vgg_w
         self.lossG.backward()

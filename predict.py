@@ -12,22 +12,25 @@ from util.visualizer import Visualizer
 if __name__ == '__main__':
     opt = testOptions().parse()
     opt.nThreads = 1
-    opt.batchSize = 1
+    opt.batchsize = 1
     opt.serial_batches = True  # no shuffle
     opt.no_flip = True  # no flip
     opt.resize_or_crop = 'no'
+    # opt.which_epoch = 190
 
-    data_loader = CreateDataLoader(opt)
-    dataset = data_loader.load_data()
-    model = model.GanModel()
-    model.initialize(opt)
-    print("打印模型：", model)
+    for i in range(1, 21):
+        opt.which_epoch += 10
+        data_loader = CreateDataLoader(opt)
+        dataset = data_loader.load_data()
+        model = model.GanModel()
+        model.initialize(opt)
+        print("打印模型：", model)
 
-    visualizer = Visualizer(opt)
+        visualizer = Visualizer(opt)
 
-for i, data in enumerate(dataset):
-    model.set_input(data)
-    visuals = model.predict()
-    img_path = model.get_image_paths()
-    print('process image... %s' % img_path)
-    visualizer.save_images(visuals, img_path)
+        for i, data in enumerate(dataset):
+            model.set_input(data)
+            visuals = model.predict()
+            img_path = model.get_image_paths()
+            print('process image... %s' % img_path)
+            visualizer.save_images(visuals, img_path, opt.which_epoch)

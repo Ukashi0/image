@@ -20,12 +20,14 @@ class Visualizer():
                 '================ Training Loss (%s) ================\n' % now)
 
     # save image to the disk
-    def save_images(self, visuals, image_path):
+    def save_images(self, visuals, image_path, which_epoch):
         # image_dir = webpage.get_image_dir()
         short_path = ntpath.basename(image_path[0])
         name = os.path.splitext(short_path)[0]
 
         for label, image_numpy in visuals.items():
             image_name = '%s_%s.png' % (name, label)
+            # path = './result/image/'+str(which_epoch)
+            # os.makedirs(path)
             save_path = os.path.join('./result/image/', image_name)
             utils.save_image(image_numpy, save_path)
