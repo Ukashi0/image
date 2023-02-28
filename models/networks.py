@@ -365,11 +365,11 @@ class conv_block(nn.Module):
         super(conv_block, self).__init__()
         self.conv = nn.Sequential(
             nn.Conv2d(ch_in, ch_out, 3, padding=1),
-            nn.ReLU(0.2, inplace=True),
+            nn.ReLU(inplace=True),
             # nn.LeakyReLU(0.2, inplace=True),
             # nn.BatchNorm2d(ch_out),
             nn.Conv2d(ch_out, ch_out, 3, padding=1),
-            nn.ReLU(0.2, inplace=True),
+            nn.ReLU(inplace=True),
             # nn.LeakyReLU(0.2, inplace=True),
             # nn.BatchNorm2d(ch_out),
         )
@@ -384,11 +384,11 @@ class up_conv(nn.Module):
         super(up_conv, self).__init__()
         self.up = nn.Sequential(
             nn.Conv2d(ch_in, ch_out, 3, padding=1),
-            nn.ReLU(0.2, inplace=True),
+            nn.ReLU(inplace=True),
             # nn.LeakyReLU(0.2, inplace=True),
             # nn.BatchNorm2d(ch_out),
             nn.Conv2d(ch_out, ch_out, 3, padding=1),
-            nn.ReLU(0.2, inplace=True),
+            nn.ReLU(inplace=True),
             # nn.LeakyReLU(0.2, inplace=True),
             # nn.BatchNorm2d(ch_out)
         )
